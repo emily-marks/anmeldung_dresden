@@ -5,32 +5,26 @@ import org.jsoup.nodes.TextNode;
 import utils.AllBueros;
 import utils.Month;
 
-import javax.mail.Message;
-import javax.mail.MessagingException;
-import javax.mail.Session;
-import javax.mail.Transport;
-import javax.mail.internet.InternetAddress;
-import javax.mail.internet.MimeMessage;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
-import java.net.PasswordAuthentication;
 import java.net.URL;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Properties;
+
+import static utils.EmailUtils.sendToEmail;
 
 public class Main {
 
     public static LocalDate nearestDate;
     public static String bueroName;
-    public static final LocalDate CURRENT_BOOKING = LocalDate.of(2022, java.time.Month.JUNE, 21);
+    public static final LocalDate CURRENT_BOOKING = LocalDate.of(2022, java.time.Month.AUGUST, 21);
     public static final String RED = "\033[0;31m";
-    public static final String BLUE = "\033[0;34m";
+//    public static final String BLUE = "\033[0;34m";
     public static final String RESET = "\033[0m";
+
 
     public static void main(String[] args) throws IOException, InterruptedException {
         while(true) {
@@ -89,43 +83,4 @@ public class Main {
         return firstDayInMonth == null ? null : firstDayInMonth.childNodes().stream().filter(node -> node instanceof TextNode && !((TextNode) node).isBlank()).findAny().get().toString();
     }
 
-    private static void sendToEmail(String info) {
-        String to = "to" ;
-        String from = "from";
-
-        String host = "smtp.yandex.com";
-        Properties properties = System.getProperties();
-
-        properties.put("mail.smtp.host", host);
-        properties.put("mail.smtp.port", "465");
-        properties.put("mail.smtp.ssl.enable", "true");
-        properties.put("mail.smtp.auth", "true");
-
-        // Get the Session object.// and pass username and password
-        Session session = Session.getInstance(properties, new javax.mail.Authenticator() {
-
-            protected javax.mail.PasswordAuthentication getPasswordAuthentication() {
-
-                return new javax.mail.PasswordAuthentication(from, "xxx");
-
-            }
-        });
-
-        // Used to debug SMTP issues
-        session.setDebug(false);
-
-        try {
-            // Create a default MimeMessage object.
-            MimeMessage message = new MimeMessage(session);
-
-            message.setFrom(new InternetAddress(from));
-            message.addRecipient(Message.RecipientType.TO, new InternetAddress(to));
-            message.setSubject("New appointment for Anmeldung is available now");
-            message.setText(info);
-
-            Transport.send(message);
-        } catch (MessagingException mex) {
-            mex.printStackTrace();
-        }
-    }
 }
