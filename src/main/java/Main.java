@@ -1,3 +1,4 @@
+import org.apache.log4j.Logger;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -14,73 +15,81 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 
+import static utils.Constants.*;
 import static utils.EmailUtils.sendToEmail;
 
 public class Main {
 
     public static LocalDate nearestDate;
-    public static String bueroName;
-    public static final LocalDate CURRENT_BOOKING = LocalDate.of(2022, java.time.Month.AUGUST, 21);
-    public static final String RED = "\033[0;31m";
-//    public static final String BLUE = "\033[0;34m";
-    public static final String RESET = "\033[0m";
-
+    public static String officeName;
+    public static final LocalDate CURRENT_BOOKING = LocalDate.of(2022, java.time.Month.JUNE, 21);
+    private final static Logger logger = Logger.getLogger(Main.class);
 
     public static void main(String[] args) throws IOException, InterruptedException {
-        while(true) {
-            for (int i = 0; i <= 8; i++) findForBuero(i);
+        while (true) {
+            for (int i = 0; i <= 8; i++) checkMostRecentDateByOffice(i);
+
             if (nearestDate.compareTo(CURRENT_BOOKING) < 0) {
-                String message = "You can book " + nearestDate.format(DateTimeFormatter.ofPattern("dd.MM.yy")) + " in " + bueroName + " now";
+                String message = "You can book " + nearestDate.format(DateTimeFormatter.ofPattern("dd.MM.yy")) + " in " + officeName + " now";
                 sendToEmail(message);
-                System.out.println(message);
+                logger.info(message);
+                break;
             } else {
-                System.out.println(LocalTime.now().format(DateTimeFormatter.ofPattern("hh:mm")) + "    " + RED + "No" + RESET + " available dates in June");
+                logger.info("No available dates at " + LocalTime.now().format(DateTimeFormatter.ofPattern("hh:mm")));
             }
             Thread.sleep(600000);
         }
     }
 
-    private static void findForBuero(int i) throws IOException {
-        URL url = new URL("https://termine.dresden.de/netappoint/index.php?company=stadtdresden-bb&cur_cause=" + i + "&step=2");
-        HttpURLConnection con = (HttpURLConnection) url.openConnection();
-        con.setRequestMethod("POST");
-        con.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-        int status = con.getResponseCode();
+    private static void checkMostRecentDateByOffice(int officeId) throws IOException {
         BufferedReader in = new BufferedReader(
-                new InputStreamReader(con.getInputStream()));
+                new InputStreamReader(getConnection(officeId).getInputStream()));
         String inputLine;
-        StringBuffer content = new StringBuffer();
+        StringBuilder content = new StringBuilder();
         while ((inputLine = in.readLine()) != null) {
             content.append(inputLine);
         }
-//        System.out.println(content);
         Document doc = Jsoup.parse(content.toString());
         String month = getFirstAvailableMonth(doc);
-        String earliestDay = getEarliestDay(doc);
-        if (earliestDay == null) {
-//            System.out.println(AllBueros.getBueroById(i).name() + " has no available dates");
+        String dayOfMonth = getFirstDay(doc);
+
+        // skip office
+        if (dayOfMonth == null) {
             return;
         }
-        LocalDate dateOfCurrentBuero = LocalDate.of(2022, Month.getMonthId(month), Integer.parseInt(earliestDay.trim()));
 
-        if (nearestDate == null || dateOfCurrentBuero.compareTo(nearestDate) < 0) {
-            nearestDate = dateOfCurrentBuero;
-            bueroName = AllBueros.getBueroById(i).name();
+        LocalDate dateOfCurrentOffice = LocalDate.of(2022, Month.getMonthId(month), Integer.parseInt(dayOfMonth.trim()));
+
+        if (nearestDate == null || dateOfCurrentOffice.compareTo(nearestDate) < 0) {
+            nearestDate = dateOfCurrentOffice;
+            officeName = AllBueros.getBueroById(officeId).name();
         }
-//        if (Month.getMonthByName(month).isJune()) {
-//            System.out.println(AllBueros.getBueroById(i) + ": " + month + ", first date = " + earliestDay);
-//        }
         in.close();
     }
 
+    private static HttpURLConnection getConnection(int officeId) throws IOException {
+        URL url = new URL(APPOINTMENT_URL + officeId + STEP_PARAM);
+        HttpURLConnection con = (HttpURLConnection) url.openConnection();
+        con.setRequestMethod("POST");
+        con.setRequestProperty("Content-Type", CONTENT_TYPE);
+        return con;
+    }
+
     private static String getFirstAvailableMonth(Document doc) {
-        return doc.select("h2.nat_navigation_currentmonth").select("abbr").html().split(" ")[0];
+        return doc.select("h2.nat_navigation_currentmonth")
+                .select("abbr")
+                .html()
+                .split(" ")[0];
     }
 
     // hardcoded attributes
-    private static String getEarliestDay(Document doc) {
+    private static String getFirstDay(Document doc) {
         Element firstDayInMonth = doc.select("a.nat_calendar_weekday_bookable").first();
-        return firstDayInMonth == null ? null : firstDayInMonth.childNodes().stream().filter(node -> node instanceof TextNode && !((TextNode) node).isBlank()).findAny().get().toString();
+        return firstDayInMonth == null ? null : firstDayInMonth
+                .childNodes().stream()
+                .filter(node -> node instanceof TextNode && !((TextNode) node).isBlank())
+                .findAny()
+                .get()
+                .toString();
     }
-
 }
