@@ -12,15 +12,19 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.time.LocalDate;
-import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Map;
 
+import static java.util.Map.Entry.*;
 import static utils.Constants.*;
 import static utils.EmailUtils.sendToEmail;
 
 public class Main {
 
     public static LocalDate nearestDate;
+    public static Map<String, LocalDate> batchAppointments = new HashMap<>();
     public static String officeName;
     public static final LocalDate CURRENT_BOOKING = LocalDate.of(2022, java.time.Month.JUNE, 21);
     private final static Logger logger = Logger.getLogger(Main.class);
@@ -35,7 +39,8 @@ public class Main {
                 logger.info(message);
                 break;
             } else {
-                logger.info("No available dates at " + LocalTime.now().format(DateTimeFormatter.ofPattern("hh:mm")));
+                printSorted(batchAppointments);
+                logger.info("No available appointments.");
             }
             Thread.sleep(600000);
         }
@@ -57,12 +62,14 @@ public class Main {
         if (dayOfMonth == null) {
             return;
         }
-
+        String officeName = AllBueros.getBueroById(officeId).name();
         LocalDate dateOfCurrentOffice = LocalDate.of(2022, Month.getMonthId(month), Integer.parseInt(dayOfMonth.trim()));
+
+        batchAppointments.put(officeName, dateOfCurrentOffice);
 
         if (nearestDate == null || dateOfCurrentOffice.compareTo(nearestDate) < 0) {
             nearestDate = dateOfCurrentOffice;
-            officeName = AllBueros.getBueroById(officeId).name();
+            Main.officeName = officeName;
         }
         in.close();
     }
@@ -91,5 +98,12 @@ public class Main {
                 .findAny()
                 .get()
                 .toString();
+    }
+
+    private static void printSorted(Map<String, LocalDate> appointments) {
+        appointments.entrySet()
+                .stream()
+                .sorted(comparingByValue())
+                .forEach(entry -> System.out.println(entry.getKey() + ": " + entry.getValue().format(DateTimeFormatter.ofPattern("dd.MM.yy"))));
     }
 }
