@@ -17,6 +17,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 
+import static java.lang.Integer.parseInt;
 import static java.util.Map.Entry.*;
 import static utils.Constants.*;
 import static utils.EmailUtils.sendToEmail;
@@ -26,7 +27,7 @@ public class Main {
     public static LocalDate nearestDate;
     public static Map<String, LocalDate> batchAppointments = new HashMap<>();
     public static String officeName;
-    public static final LocalDate CURRENT_BOOKING = LocalDate.of(2022, java.time.Month.JUNE, 21);
+    public static final LocalDate CURRENT_BOOKING = LocalDate.of(2022, java.time.Month.OCTOBER, 17);
     private final static Logger logger = Logger.getLogger(Main.class);
 
     public static void main(String[] args) throws IOException, InterruptedException {
@@ -35,14 +36,14 @@ public class Main {
 
             if (nearestDate.compareTo(CURRENT_BOOKING) < 0) {
                 String message = "You can book " + nearestDate.format(DateTimeFormatter.ofPattern("dd.MM.yy")) + " in " + officeName + " now";
-                sendToEmail(message);
+//                sendToEmail(message);
                 logger.info(message);
                 break;
             } else {
                 printSorted(batchAppointments);
                 logger.info("No available appointments.");
             }
-            Thread.sleep(600000);
+            Thread.sleep(600000/5);
         }
     }
 
@@ -56,6 +57,7 @@ public class Main {
         }
         Document doc = Jsoup.parse(content.toString());
         String month = getFirstAvailableMonth(doc);
+        String year = getFirstAvailableYear(doc);
         String dayOfMonth = getFirstDay(doc);
 
         // skip office
@@ -63,7 +65,7 @@ public class Main {
             return;
         }
         String officeName = AllBueros.getBueroById(officeId).name();
-        LocalDate dateOfCurrentOffice = LocalDate.of(2022, Month.getMonthId(month), Integer.parseInt(dayOfMonth.trim()));
+        LocalDate dateOfCurrentOffice = LocalDate.of(parseInt(year), Month.getMonthId(month), parseInt(dayOfMonth.trim()));
 
         batchAppointments.put(officeName, dateOfCurrentOffice);
 
@@ -87,6 +89,13 @@ public class Main {
                 .select("abbr")
                 .html()
                 .split(" ")[0];
+    }
+
+    private static String getFirstAvailableYear(Document doc) {
+        return doc.select("h2.nat_navigation_currentmonth")
+                .select("abbr")
+                .html()
+                .split(" ")[1];
     }
 
     // hardcoded attributes

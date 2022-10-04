@@ -1,6 +1,7 @@
 package utils;
 
 public enum Month {
+    Januar (1),
     Juni(6),
     Juli(7),
     August(8),
